@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
