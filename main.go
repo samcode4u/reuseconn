@@ -16,32 +16,6 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-var connections []*resty.Client
-var rrindex = 0
-var maxsize = 10
-var mutext sync.Mutex
-
-func CreateConnections() {
-	mutext.Lock()
-	for i := 0; i < maxsize; i++ {
-		fmt.Println(i)
-		connection := resty.New()
-		connection.SetBasicAuth("username", "password")
-		connections = append(connections, connection)
-	}
-	mutext.Unlock()
-}
-
-func GetConnection() *resty.Client {
-	mutext.Lock()
-	rrindex = rrindex % maxsize
-	fmt.Println("rrindex = ", rrindex)
-	conn := connections[rrindex]
-	rrindex++
-	mutext.Unlock()
-	return conn
-}
-
 func basicAuth(username, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
@@ -88,44 +62,6 @@ func sendRequest(client *http.Client, method string, endpoint string, reqbody []
 	return body
 }
 
-func TestTranportConcurrency() {
-	resp := sendRequest(httpClient(), "GET", "https://api.tiniyo.com/v1/Accounts/username/Messages/fcbddeab-5ac3-4281-9dd7-e857ef6625ba", nil, "username", "password")
-	fmt.Println(string(resp))
-}
-
-func CallAPI(connection *resty.Client) {
-	resp, err := connection.R().
-		EnableTrace().
-		Get("https://api.tiniyo.com/v1/Accounts/username/Messages/fcbddeab-5ac3-4281-9dd7-e857ef6625ba")
-
-	// Explore response object
-	// fmt.Println("Response Info:")
-	fmt.Println("  Error      :", err)
-	// fmt.Println("  Status Code:", resp.StatusCode())
-	// fmt.Println("  Status     :", resp.Status())
-	// fmt.Println("  Proto      :", resp.Proto())
-	// fmt.Println("  Time       :", resp.Time())
-	// fmt.Println("  Received At:", resp.ReceivedAt())
-	// fmt.Println("  Body       :\n", resp)
-	// fmt.Println()
-
-	// Explore trace info
-	fmt.Println("Request Trace Info:")
-	ti := resp.Request.TraceInfo()
-	// fmt.Println("  DNSLookup     :", ti.DNSLookup)
-	// fmt.Println("  ConnTime      :", ti.ConnTime)
-	// fmt.Println("  TCPConnTime   :", ti.TCPConnTime)
-	// fmt.Println("  TLSHandshake  :", ti.TLSHandshake)
-	// fmt.Println("  ServerTime    :", ti.ServerTime)
-	// fmt.Println("  ResponseTime  :", ti.ResponseTime)
-	fmt.Println("  TotalTime     :", ti.TotalTime)
-	fmt.Println("  IsConnReused  :", ti.IsConnReused)
-	fmt.Println("  IsConnWasIdle :", ti.IsConnWasIdle)
-	// fmt.Println("  ConnIdleTime  :", ti.ConnIdleTime)
-	// fmt.Println("  RequestAttempt:", ti.RequestAttempt)
-	// fmt.Println("  RemoteAddr    :", ti.RemoteAddr.String())
-
-}
 
 func createTransport(localAddr net.Addr) *http.Transport {
 	dialer := &net.Dialer{
@@ -147,55 +83,6 @@ func createTransport(localAddr net.Addr) *http.Transport {
 		MaxIdleConnsPerHost:   100,
 		MaxConnsPerHost:       100,
 	}
-}
-
-func RoutineConfigTest() {
-	connection := resty.New()
-	tranport := createTransport(nil)
-	connection.SetTransport(tranport)
-	for i := 0; i < 100; i++ {
-		fmt.Println("times", i)
-		go CallAPI(connection)
-	}
-	time.Sleep(5 * time.Second)
-	for i := 0; i < 100; i++ {
-		fmt.Println("times", i)
-		go CallAPI(connection)
-	}
-}
-
-func RoutineTest() {
-	resp, err := GetConnection().R().
-		EnableTrace().
-		Get("https://api.tiniyo.com/v1/Accounts/username/Messages/fcbddeab-5ac3-4281-9dd7-e857ef6625ba")
-
-	// Explore response object
-	// fmt.Println("Response Info:")
-	fmt.Println("  Error      :", err)
-	// fmt.Println("  Status Code:", resp.StatusCode())
-	// fmt.Println("  Status     :", resp.Status())
-	// fmt.Println("  Proto      :", resp.Proto())
-	// fmt.Println("  Time       :", resp.Time())
-	// fmt.Println("  Received At:", resp.ReceivedAt())
-	// fmt.Println("  Body       :\n", resp)
-	// fmt.Println()
-
-	// Explore trace info
-	fmt.Println("Request Trace Info:")
-	ti := resp.Request.TraceInfo()
-	// fmt.Println("  DNSLookup     :", ti.DNSLookup)
-	// fmt.Println("  ConnTime      :", ti.ConnTime)
-	// fmt.Println("  TCPConnTime   :", ti.TCPConnTime)
-	// fmt.Println("  TLSHandshake  :", ti.TLSHandshake)
-	// fmt.Println("  ServerTime    :", ti.ServerTime)
-	// fmt.Println("  ResponseTime  :", ti.ResponseTime)
-	fmt.Println("  TotalTime     :", ti.TotalTime)
-	fmt.Println("  IsConnReused  :", ti.IsConnReused)
-	fmt.Println("  IsConnWasIdle :", ti.IsConnWasIdle)
-	// fmt.Println("  ConnIdleTime  :", ti.ConnIdleTime)
-	// fmt.Println("  RequestAttempt:", ti.RequestAttempt)
-	// fmt.Println("  RemoteAddr    :", ti.RemoteAddr.String())
-
 }
 
 func startWebserver() {
